@@ -3,13 +3,21 @@ package server
 import (
 	"errors"
 	"io"
+	"sync"
 	"time"
 )
 
 var errDisconnect = errors.New("traffic logger requested disconnect")
 
+var copyBufPool = sync.Pool{
+	New: func() any {
+		return make([]byte, 32*1024)
+	},
+}
+
 func copyBufferLog(dst io.Writer, src io.Reader, log func(n uint64) bool) error {
-	buf := make([]byte, 32*1024)
+	buf := copyBufPool.Get().([]byte)
+	defer copyBufPool.Put(buf)
 	for {
 		nr, er := src.Read(buf)
 		if nr > 0 {
